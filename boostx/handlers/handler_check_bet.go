@@ -1,0 +1,75 @@
+package handlers
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/boostxinnovation/boostx-partner-sdk-go/boostx/tokens"
+)
+
+// CheckBetHandler handles POST /check-bet requests.
+type CheckBetHandler struct {
+	keys  KeyStore
+	store BetStoreChecker
+}
+
+// NewCheckBetHandler creates a new CheckBetHandler. Panics if store or keyStore is nil.
+func NewCheckBetHandler(store BetStoreChecker, keyStore KeyStore) *CheckBetHandler {
+	mustNotBeNil(store, "bet store")
+	mustNotBeNil(keyStore, "key store")
+	return &CheckBetHandler{keys: keyStore, store: store}
+}
+
+// checkBetResponse is the response body for POST /check-bet.
+type checkBetResponse struct {
+	Active bool `json:"active"`
+}
+
+// ServeHTTP validates checkbetJWT and checks if bet is active.
+func (h *CheckBetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !isPost(w, r) {
+		return
+	}
+	token, ok := readToken(w, r, "checkbetJWT")
+	if !ok {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Extract claims without verification to get key lookup params
+	partner, err := tokens.ExtractCheckBetPartner(token)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid checkbet token")
+		return
+	}
+
+	boostxPubKey, err := h.keys.BoostxPublicKey(r.Context(), partner)
+	if err != nil {
+		writeKeyError(w, err, "boostx key", partner)
+		return
+	}
+
+	partnerPubKeys, err := partnerPublicKeys(r.Context(), h.keys, partner)
+	if err != nil {
+		writeKeyError(w, err, "partner key", partner)
+		return
+	}
+
+	checkBet, err := tokens.ParseCheckBetTokenWithKeys(token, boostxPubKey, partnerPubKeys)
+	if err != nil {
+		if errors.Is(err, tokens.ErrInvalidPublicKey) {
+			writeError(w, http.StatusInternalServerError, "failed to verify token")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "invalid checkbet token")
+		return
+	}
+
+	active, err := h.store.CheckBet(r.Context(), &checkBet.GID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to check bet")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resultResponse{Result: checkBetResponse{Active: active}})
+}
