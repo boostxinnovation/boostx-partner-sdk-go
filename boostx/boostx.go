@@ -252,7 +252,8 @@ func CreateSettlementToken(privateKey *ecdsa.PrivateKey, params SettlementParams
 	return tokens.CreateSettlementToken(privateKey, params)
 }
 
-// BuildGID creates a signed GID struct.
+// BuildGID creates a signed GID struct. Each id must be free of ":" and at most
+// 32 (partner), 64 (user) or 96 (bet) runes, or it is ErrInvalidClaim.
 func BuildGID(partner, user, bet string, privateKey *ecdsa.PrivateKey) (*GID, error) {
 	return tokens.BuildGID(partner, user, bet, privateKey)
 }

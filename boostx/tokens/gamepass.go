@@ -32,9 +32,9 @@ type GamePass struct {
 // XMin < XMax; the SDK checks only that X is set, that X, XMin and XMax are
 // finite and not negative, and that XDecimals is in range.
 type GamePassParams struct {
-	Partner    string  // Partner identifier assigned by BoostX (matches gid.partner)
-	User       string  // User identifier; must not contain ":" (not checked)
-	Bet        string  // Bet identifier; must not contain ":" (not checked)
+	Partner    string  // Partner identifier assigned by BoostX (matches gid.partner); no ":", at most 32 runes
+	User       string  // User identifier; no ":", at most 64 runes
+	Bet        string  // Bet identifier; no ":", at most 96 runes
 	Amount     float64 // Stake in major units of Currency (12.5, never cents); must be at least 0.01
 	Currency   string  // Currency code, 3 or 4 uppercase letters (e.g., "USD", "USDT"), sent as given
 	X          float64 // Your own coefficient before the boost (xrange.init), never derived from a boost; must be > 0

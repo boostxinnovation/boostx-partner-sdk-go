@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -80,7 +81,9 @@ func writeJSONStringifyString(b *bytes.Buffer, s string) {
 	b.WriteByte('"')
 }
 
-// BuildGID creates a signed GID struct. Identifiers must be valid UTF-8.
+// BuildGID creates a signed GID struct. Each id must be valid UTF-8, free of ":" and
+// at most 32 (partner), 64 (user) or 96 (bet) characters, counted as runes;
+// otherwise ErrInvalidClaim names the id.
 func BuildGID(partner, user, bet string, privateKey *ecdsa.PrivateKey) (*GID, error) {
 	if err := checkPrivateKey(privateKey); err != nil {
 		return nil, err
@@ -94,16 +97,22 @@ func BuildGID(partner, user, bet string, privateKey *ecdsa.PrivateKey) (*GID, er
 	if bet == "" {
 		return nil, fmt.Errorf("%w: bet", ErrMissingClaim)
 	}
-	// Invalid UTF-8 travels as U+FFFD (encoding/json) while the signature covers the
-	// raw bytes — such a token can never verify. Fail fast here instead.
-	if !utf8.ValidString(partner) {
-		return nil, fmt.Errorf("%w: partner is not valid UTF-8", ErrInvalidClaim)
-	}
-	if !utf8.ValidString(user) {
-		return nil, fmt.Errorf("%w: user is not valid UTF-8", ErrInvalidClaim)
-	}
-	if !utf8.ValidString(bet) {
-		return nil, fmt.Errorf("%w: bet is not valid UTF-8", ErrInvalidClaim)
+	// Each id in turn: valid UTF-8, no ":", then its length in runes. Invalid UTF-8
+	// travels as U+FFFD (encoding/json) while the signature covers the raw bytes, so
+	// such a token could never verify. BoostX refuses a gamepass whose ids hold ":"
+	// or exceed their limits.
+	for _, id := range []struct {
+		name, value string
+		max         int
+	}{{"partner", partner, 32}, {"user", user, 64}, {"bet", bet, 96}} {
+		switch {
+		case !utf8.ValidString(id.value):
+			return nil, fmt.Errorf("%w: %s is not valid UTF-8", ErrInvalidClaim, id.name)
+		case strings.Contains(id.value, ":"):
+			return nil, fmt.Errorf("%w: %s must not contain \":\"", ErrInvalidClaim, id.name)
+		case utf8.RuneCountInString(id.value) > id.max:
+			return nil, fmt.Errorf("%w: %s is longer than %d characters", ErrInvalidClaim, id.name, id.max)
+		}
 	}
 
 	sig, err := signES256(privateKey, canonicalGIDPayload(partner, user, bet))

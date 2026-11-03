@@ -6,7 +6,7 @@
 [![CI](https://github.com/boostxinnovation/boostx-partner-sdk-go/actions/workflows/ci.yml/badge.svg)](https://github.com/boostxinnovation/boostx-partner-sdk-go/actions/workflows/ci.yml)
 
 Go SDK for integrating with the BoostX platform as a partner. It conforms to
-[boostx-partner-sdk-spec v1.0.0](https://github.com/boostxinnovation/boostx-partner-sdk-spec/tree/v1.0.0),
+[boostx-partner-sdk-spec v1.1.0](https://github.com/boostxinnovation/boostx-partner-sdk-spec/tree/v1.1.0),
 the specification of how a BoostX partner SDK behaves. You do not need the spec to use the SDK: this
 README says what you must do yourself and which errors you will see, and links the spec's rule where
 you may want the exact behaviour. A step-by-step quick start is in the partner docs, open to partners
@@ -204,10 +204,10 @@ your clock (keep it NTP-synced), an `exp` that has passed or an `nbf` still ahea
 `nonce` that is not an integer from `1` to `2147483647` is `nonce-format`. An `aud` your key store
 does not serve is answered `invalid verifyKeysJWT: iss-aud (unknown partner "<id>")`.
 A token with several faults gets the reason of the first check it fails, in the handler's order
-([HTTP-21](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#http-21)):
+([HTTP-21](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#http-21)):
 it reads the payload's format and claim types and looks up your BoostX public key before it
 verifies the token
-([VERIFYKEYS-46](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#verifykeys-46)),
+([VERIFYKEYS-46](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#verifykeys-46)),
 so a payload fault is `shape`, and an `aud` you do not serve `iss-aud`, even when the signature is
 bad too.
 A key store error other than an unknown partner, or a key that cannot verify or sign, is answered `500`.
@@ -241,7 +241,7 @@ before the token, so this error points at your configuration whatever the token 
 mounted handlers answer it `500`. A call with several faults fails with the first check in a fixed
 order: a signing function or a parser checks its key before anything else, and a parser checks a
 token's format and signature before its claims
-([P-check-order](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#p-check-order)
+([P-check-order](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#p-check-order)
 links each function's order). Compare errors with `errors.Is`, never with `==`.
 
 Inbound tokens are read strictly, as BoostX writes them: three canonical unpadded base64url
@@ -252,7 +252,7 @@ you sign in tests. A token that fails is malformed, which matches its token erro
 `ErrInvalidSignature` (`shape` on `/verify-keys`), except that a wrong `alg`, a `crit`, or a
 signature segment that is not 64 bytes of canonical base64url is `ErrInvalidSignature` (`signature`
 on `/verify-keys`).
-[KEYS-67](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#keys-67)
+[KEYS-67](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-67)
 gives every rule and their order.
 
 A Booster token must carry `iat`, an integer `round` from `1` to `2^53−1` (`math.MaxInt` on a 32-bit
@@ -261,7 +261,7 @@ four strings; a CheckBet token must carry `gid` and `iat`. BoostX always sends t
 sign for an offline test must too: a missing value is `ErrMissingClaim`, a wrong type or range
 `ErrInvalidClaim`, a bad `gid` shape `ErrInvalidGID`. `iat` is not age-checked. BoostX sends no
 `exp` or `nbf`; a token that carries one is held to it with no leeway
-([KEYS-42](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#keys-42)).
+([KEYS-42](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-42)).
 `ExtractBoosterPartner` and `ExtractCheckBetPartner` run the same claim checks as the parsers without
 reading the header or the signatures, so the handlers answer such a token `400` before any key-store
 lookup.
@@ -281,9 +281,18 @@ path starting with `/`; `NewClient` also panics on a `nil` `*MemoryKeyStore`, an
 invalid base URL or a negative `Timeout`. A `nil` pointer of your own key store
 type is not caught.
 
-`User` and `Bet` must not contain `:`. BoostX treats bets whose ids differ only
-in where a `:` falls as the same bet, so the second joins the first game instead
-of starting its own. The SDK does not check this.
+`Partner`, `User` and `Bet` must not contain `:` and are at most 32, 64 and 96
+characters long, counted as Unicode code points (`utf8.RuneCountInString`, never
+`len`), so `é` and `😀` each count as one
+([GID-09](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gid-09),
+[GID-10](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gid-10)).
+BoostX refuses a gamepass whose ids break either rule with `401`, so
+`BuildGID`, `CreateGamePassToken`, `CreateSettlementToken` and `SubmitSettlement`
+refuse such an id before signing, with `ErrInvalidClaim` naming it: a
+settlement is built only for ids a gamepass can carry, so an id fault is a fault
+in your code. Only `:` itself is refused (the full-width `：` is an ordinary
+character), and ids are never trimmed or normalised. Parsing an inbound token
+checks neither rule.
 
 ## Advanced Usage
 
@@ -315,7 +324,7 @@ publicKey, err := boostx.LoadPublicKeyFromPEM(pemBytes)
 Any failure is `ErrInvalidPrivateKey` or `ErrInvalidPublicKey`, whose message says why, and a file
 that cannot be read also matches the operating system's error, such as `fs.ErrNotExist`. The exact
 rules start at
-[KEYS-01](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.0.0/SPEC.md#keys-01).
+[KEYS-01](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-01).
 
 ### Creating GamePass Tokens
 

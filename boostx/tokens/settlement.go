@@ -16,9 +16,9 @@ type Money struct {
 
 // SettlementParams contains the parameters for creating a Settlement token.
 type SettlementParams struct {
-	Partner  string  // Partner identifier assigned by BoostX (matches gid.partner)
-	User     string  // User identifier; must not contain ":" (not checked)
-	Bet      string  // Bet identifier; must not contain ":" (not checked)
+	Partner  string  // Partner identifier assigned by BoostX (matches gid.partner); no ":", at most 32 runes
+	User     string  // User identifier; no ":", at most 64 runes
+	Bet      string  // Bet identifier; no ":", at most 96 runes
 	Status   string  // Bet outcome, one of the Status* constants
 	Amount   float64 // What reached the player, in major units of Currency; 0 for a loss, and must be 0 when Status is StatusUnsettled. An unset Amount is sent as 0
 	Currency string  // Payout currency: 3 or 4 uppercase letters, e.g. "USD" or "USDT"
