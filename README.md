@@ -9,8 +9,8 @@ Go SDK for integrating with the BoostX platform as a partner. It conforms to
 [boostx-partner-sdk-spec v1.1.0](https://github.com/boostxinnovation/boostx-partner-sdk-spec/tree/v1.1.0),
 the specification of how a BoostX partner SDK behaves. You do not need the spec to use the SDK: this
 README says what you must do yourself and which errors you will see, and links the spec's rule where
-you may want the exact behaviour. A step-by-step quick start is in the partner docs, open to partners
-BoostX has given access: [Go SDK](https://docs.boostx.cloud/sdk/go/).
+you may want the exact behaviour. A step-by-step quick start is in the partner docs, which BoostX
+opens to its partners.
 
 ## Installation
 
@@ -101,7 +101,7 @@ yours to enforce in `SetBoost`:
 `booster.IssuedAt` is the token's `iat`, in Unix seconds, as BoostX sent it; the
 SDK applies no age check. If you add one, allow for retries: BoostX sends a
 round again with the same token, so its `iat` can be older than the call
-([Clocks and token age](https://docs.boostx.cloud/manual/#clocks-and-token-age)).
+([HTTP-30](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#http-30)).
 
 To enable the optional `/check-bet` endpoint, also implement `BetStoreChecker`:
 
@@ -374,15 +374,15 @@ that `X` is set, that `X`, `XMin` and `XMax` are finite and not negative, and th
 range. A later entry's `X` is not range-checked again: BoostX adopts any
 finite value, and while the resulting X lies outside `[XMin, XMax]` the game is view-only, with no
 round playable. Keep every `X` you issue inside `[1.1, 200]` yourself
-([Validation rules (xrange)](https://docs.boostx.cloud/gamepass/#validation-rules-xrange)).
+([GAMEPASS-19](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-19)).
 
 ### Calculating X
 
 `PlayerX(xBase, boost, decimals)` returns the X the player saw for a Booster token's `boost`:
 `1 + (xBase - 1) × boost`, floored to the bet's `xrange.decimals`. BoostX floors `xBase` onto that
 grid when it receives the gamepass and boosts the floored value, and floors by its own rule
-([Flooring X](https://docs.boostx.cloud/rounds/#flooring-x)), which a plain
-`math.Floor(x*100)/100` does not reproduce in every round:
+([GAMEPASS-38](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-38)),
+which a plain `math.Floor(x*100)/100` does not reproduce in every round:
 
 ```go
 x := boostx.PlayerX(xBase, booster.Boost, decimals)
@@ -393,11 +393,11 @@ latest one you issued: after the player reopens the game on a new `X`, BoostX bo
 every round, regular or jackpot, sent for the first time or again. The one exception is a regular
 round with `final: true` that is sent again after a reopen: it keeps the `X` of the entry during
 which it was first sent, because an ended game shows the `X` that ended it
-([Coefficient calculation](https://docs.boostx.cloud/rounds/#coefficient-calculation)). BoostX never
-sends `xBase` back, so record the `X` of every gamepass you issue for a bet. `decimals` is the bet's
-`XDecimals`; `0` (unset) floors to the default `2`, and a value outside 2–6 gives `NaN`. With
-`xBase` `1.857`, `boost` `1.5` and two decimals, the player saw `2.27`, not the `2.28` that flooring
-only the result gives. `FloorX(x, decimals)` is the flooring step alone.
+([GAMEPASS-44](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-44)).
+BoostX never sends `xBase` back, so record the `X` of every gamepass you issue for a bet. `decimals`
+is the bet's `XDecimals`; `0` (unset) floors to the default `2`, and a value outside 2–6 gives
+`NaN`. With `xBase` `1.857`, `boost` `1.5` and two decimals, the player saw `2.27`, not the `2.28`
+that flooring only the result gives. `FloorX(x, decimals)` is the flooring step alone.
 
 ### Submitting Settlements
 
@@ -619,7 +619,7 @@ carrying the GID of the gamepass that created each game, signed with the old
 partner private key, for as long as that game lasts. Register the new private
 key with both public keys, the new one first, in one call, and keep the old
 public key until the games started before the rotation have ended
-([Rotating the partner key pair](https://docs.boostx.cloud/keys/#rotating-the-partner-key-pair)):
+([KEYS-45](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-45)):
 
 ```go
 ks.RegisterWithPartnerPublicKeys("partner-a",
