@@ -6,7 +6,7 @@
 [![CI](https://github.com/boostxinnovation/boostx-partner-sdk-go/actions/workflows/ci.yml/badge.svg)](https://github.com/boostxinnovation/boostx-partner-sdk-go/actions/workflows/ci.yml)
 
 Go SDK for integrating with the BoostX platform as a partner. It conforms to
-[boostx-partner-sdk-spec v1.1.0](https://github.com/boostxinnovation/boostx-partner-sdk-spec/tree/v1.1.0),
+[boostx-partner-sdk-spec v1.2.0](https://github.com/boostxinnovation/boostx-partner-sdk-spec/tree/v1.2.0),
 the specification of how a BoostX partner SDK behaves. You do not need the spec to use the SDK: this
 README says what you must do yourself and which errors you will see, and links the spec's rule where
 you may want the exact behaviour. A step-by-step quick start is in the partner docs, which BoostX
@@ -101,7 +101,7 @@ yours to enforce in `SetBoost`:
 `booster.IssuedAt` is the token's `iat`, in Unix seconds, as BoostX sent it; the
 SDK applies no age check. If you add one, allow for retries: BoostX sends a
 round again with the same token, so its `iat` can be older than the call
-([HTTP-30](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#http-30)).
+([HTTP-30](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#http-30)).
 
 To enable the optional `/check-bet` endpoint, also implement `BetStoreChecker`:
 
@@ -204,10 +204,10 @@ your clock (keep it NTP-synced), an `exp` that has passed or an `nbf` still ahea
 `nonce` that is not an integer from `1` to `2147483647` is `nonce-format`. An `aud` your key store
 does not serve is answered `invalid verifyKeysJWT: iss-aud (unknown partner "<id>")`.
 A token with several faults gets the reason of the first check it fails, in the handler's order
-([HTTP-21](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#http-21)):
+([HTTP-21](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#http-21)):
 it reads the payload's format and claim types and looks up your BoostX public key before it
 verifies the token
-([VERIFYKEYS-46](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#verifykeys-46)),
+([VERIFYKEYS-46](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#verifykeys-46)),
 so a payload fault is `shape`, and an `aud` you do not serve `iss-aud`, even when the signature is
 bad too.
 A key store error other than an unknown partner, or a key that cannot verify or sign, is answered `500`.
@@ -241,7 +241,7 @@ before the token, so this error points at your configuration whatever the token 
 mounted handlers answer it `500`. A call with several faults fails with the first check in a fixed
 order: a signing function or a parser checks its key before anything else, and a parser checks a
 token's format and signature before its claims
-([P-check-order](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#p-check-order)
+([P-check-order](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#p-check-order)
 links each function's order). Compare errors with `errors.Is`, never with `==`.
 
 Inbound tokens are read strictly, as BoostX writes them: three canonical unpadded base64url
@@ -252,7 +252,7 @@ you sign in tests. A token that fails is malformed, which matches its token erro
 `ErrInvalidSignature` (`shape` on `/verify-keys`), except that a wrong `alg`, a `crit`, or a
 signature segment that is not 64 bytes of canonical base64url is `ErrInvalidSignature` (`signature`
 on `/verify-keys`).
-[KEYS-67](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-67)
+[KEYS-67](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#keys-67)
 gives every rule and their order.
 
 A Booster token must carry `iat`, an integer `round` from `1` to `2^53−1` (`math.MaxInt` on a 32-bit
@@ -261,7 +261,7 @@ four strings; a CheckBet token must carry `gid` and `iat`. BoostX always sends t
 sign for an offline test must too: a missing value is `ErrMissingClaim`, a wrong type or range
 `ErrInvalidClaim`, a bad `gid` shape `ErrInvalidGID`. `iat` is not age-checked. BoostX sends no
 `exp` or `nbf`; a token that carries one is held to it with no leeway
-([KEYS-42](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-42)).
+([KEYS-42](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#keys-42)).
 `ExtractBoosterPartner` and `ExtractCheckBetPartner` run the same claim checks as the parsers without
 reading the header or the signatures, so the handlers answer such a token `400` before any key-store
 lookup.
@@ -284,8 +284,8 @@ type is not caught.
 `Partner`, `User` and `Bet` must not contain `:` and are at most 32, 64 and 96
 characters long, counted as Unicode code points (`utf8.RuneCountInString`, never
 `len`), so `é` and `😀` each count as one
-([GID-09](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gid-09),
-[GID-10](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gid-10)).
+([GID-09](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#gid-09),
+[GID-10](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#gid-10)).
 BoostX refuses a gamepass whose ids break either rule with `401`, so
 `BuildGID`, `CreateGamePassToken`, `CreateSettlementToken` and `SubmitSettlement`
 refuse such an id before signing, with `ErrInvalidClaim` naming it: a
@@ -324,7 +324,7 @@ publicKey, err := boostx.LoadPublicKeyFromPEM(pemBytes)
 Any failure is `ErrInvalidPrivateKey` or `ErrInvalidPublicKey`, whose message says why, and a file
 that cannot be read also matches the operating system's error, such as `fs.ErrNotExist`. The exact
 rules start at
-[KEYS-01](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-01).
+[KEYS-01](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#keys-01).
 
 ### Creating GamePass Tokens
 
@@ -374,14 +374,14 @@ that `X` is set, that `X`, `XMin` and `XMax` are finite and not negative, and th
 range. A later entry's `X` is not range-checked again: BoostX adopts any
 finite value, and while the resulting X lies outside `[XMin, XMax]` the game is view-only, with no
 round playable. Keep every `X` you issue inside `[1.1, 200]` yourself
-([GAMEPASS-19](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-19)).
+([GAMEPASS-19](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#gamepass-19)).
 
 ### Calculating X
 
 `PlayerX(xBase, boost, decimals)` returns the X the player saw for a Booster token's `boost`:
 `1 + (xBase - 1) × boost`, floored to the bet's `xrange.decimals`. BoostX floors `xBase` onto that
 grid when it receives the gamepass and boosts the floored value, and floors by its own rule
-([GAMEPASS-38](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-38)),
+([GAMEPASS-38](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#gamepass-38)),
 which a plain `math.Floor(x*100)/100` does not reproduce in every round:
 
 ```go
@@ -390,14 +390,18 @@ x := boostx.PlayerX(xBase, booster.Boost, decimals)
 
 `xBase` is the `X` you signed into the gamepass of the entry that sends the round, normally the
 latest one you issued: after the player reopens the game on a new `X`, BoostX boosts that one, for
-every round, regular or jackpot, sent for the first time or again. The one exception is a regular
-round with `final: true` that is sent again after a reopen: it keeps the `X` of the entry during
-which it was first sent, because an ended game shows the `X` that ended it
-([GAMEPASS-44](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#gamepass-44)).
-BoostX never sends `xBase` back, so record the `X` of every gamepass you issue for a bet. `decimals`
-is the bet's `XDecimals`; `0` (unset) floors to the default `2`, and a value outside 2–6 gives
-`NaN`. With `xBase` `1.857`, `boost` `1.5` and two decimals, the player saw `2.27`, not the `2.28`
-that flooring only the result gives. `FloorX(x, decimals)` is the flooring step alone.
+every round sent for the first time or again, with two exceptions. A regular round with
+`final: true` that is sent again keeps the `X` of the entry during which it was first sent,
+because an ended game shows the `X` that ended it. A jackpot round keeps, on every attempt, the
+`X` of the entry during which BoostX fixed its result, normally the entry that first sent it
+([GAMEPASS-44](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#gamepass-44)).
+BoostX never sends `xBase` back, so record the `X` of every gamepass you issue for a bet. When the
+first attempt of a round that keeps an earlier entry's `X` never reached you and a later entry
+changed `X`, the token alone cannot tell which entry's `X` applies. `PlayerX` gives the X the player
+saw, on a jackpot round too. `decimals` is the bet's `XDecimals`; `0` (unset) floors to the default
+`2`, and a value outside 2–6 gives `NaN`. With `xBase` `1.857`, `boost` `1.5` and two decimals, the
+player saw `2.27`, not the `2.28` that flooring only the result gives. `FloorX(x, decimals)` is the
+flooring step alone.
 
 ### Submitting Settlements
 
@@ -619,7 +623,7 @@ carrying the GID of the gamepass that created each game, signed with the old
 partner private key, for as long as that game lasts. Register the new private
 key with both public keys, the new one first, in one call, and keep the old
 public key until the games started before the rotation have ended
-([KEYS-45](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.1.0/SPEC.md#keys-45)):
+([KEYS-45](https://github.com/boostxinnovation/boostx-partner-sdk-spec/blob/v1.2.0/SPEC.md#keys-45)):
 
 ```go
 ks.RegisterWithPartnerPublicKeys("partner-a",
