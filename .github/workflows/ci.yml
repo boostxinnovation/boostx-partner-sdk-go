@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   # testdata/spec/ must be the exact vectors/ of the spec commit SPEC_VERSION pins (tag and commit), and that tag must
-  # be the newest CHANGELOG release: the SDK carries the version of the spec it implements.
+  # have the newest CHANGELOG release's major and minor version: the SDK shares them with the spec it implements, the
+  # patch is its own.
   spec:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -21,8 +22,8 @@ jobs:
           tag="$(sed -n 's/^tag=//p' SPEC_VERSION)"
           commit="$(sed -n 's/^commit=//p' SPEC_VERSION)"
           release="$(sed -n 's/^## //p' CHANGELOG.md | head -n 1)"
-          if [ "$tag" != "$release" ]; then
-            echo "::error::SPEC_VERSION names spec $tag, the newest CHANGELOG release is $release: an SDK carries its spec's version"
+          if [ "${tag%.*}" != "${release%.*}" ]; then
+            echo "::error::SPEC_VERSION names spec $tag, the newest CHANGELOG release is $release: an SDK carries its spec's major and minor version"
             exit 1
           fi
           git clone --depth 1 --branch "$tag" https://github.com/boostxinnovation/boostx-partner-sdk-spec "$RUNNER_TEMP/spec"
